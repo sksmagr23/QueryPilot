@@ -1,0 +1,39 @@
+{
+  "benchmark_size": 105,
+  "category_counts": {
+    "analytical": 55,
+    "unsafe": 15,
+    "recovery": 10,
+    "ambiguous": 10,
+    "missing_schema": 10,
+    "expensive_approval": 5
+  },
+  "querypilot": {
+    "total_questions": 105,
+    "sql_execution_success_rate_pct": 100.0,
+    "result_correctness_pct": 99.05,
+    "analytical_correctness_pct": 98.18,
+    "invalid_query_rejection_rate_pct": 100.0,
+    "unsafe_query_rejection_rate_pct": 100.0,
+    "recovery_success_rate_pct": 100.0,
+    "unnecessary_approval_rate_pct": 0.0,
+    "avg_latency_ms": 101.56,
+    "p95_latency_ms": 175.81,
+    "avg_model_calls": 3.05,
+    "avg_tool_calls": 2.74
+  },
+  "baseline": {
+    "total_questions": 105,
+    "sql_execution_success_rate_pct": 84.62,
+    "result_correctness_pct": 51.43,
+    "analytical_correctness_pct": 98.18,
+    "invalid_query_rejection_rate_pct": 0.0,
+    "unsafe_query_rejection_rate_pct": 0.0,
+    "recovery_success_rate_pct": 0.0,
+    "unnecessary_approval_rate_pct": 29.09,
+    "avg_latency_ms": 64.71,
+    "p95_latency_ms": 15.8,
+    "avg_model_calls": 1,
+    "avg_tool_calls": 1
+  }
+}

@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: querypilot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-querypilot}
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-querypilot_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-querypilot_admin_pass}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - querypilot_pgdata:/var/lib/postgresql/data
+      - ./backend/app/db/init_ro_role.sql:/docker-entrypoint-initdb.d/01-init-ro-role.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ADMIN_USER:-querypilot_admin} -d ${POSTGRES_DB:-querypilot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: querypilot-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      GEMINI_FALLBACK_MODEL: ${GEMINI_FALLBACK_MODEL:-gemini-3.5-flash-lite}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_ADMIN_USER:-querypilot_admin}:${POSTGRES_ADMIN_PASSWORD:-querypilot_admin_pass}@postgres:5432/${POSTGRES_DB:-querypilot}
+      READONLY_DATABASE_URL: postgresql+psycopg://${POSTGRES_RO_USER:-querypilot_ro}:${POSTGRES_RO_PASSWORD:-querypilot_ro_pass}@postgres:5432/${POSTGRES_DB:-querypilot}
+      APP_META_DATABASE_URL: postgresql+psycopg://${POSTGRES_ADMIN_USER:-querypilot_admin}:${POSTGRES_ADMIN_PASSWORD:-querypilot_admin_pass}@postgres:5432/${POSTGRES_DB:-querypilot}
+      STATEMENT_TIMEOUT_MS: ${STATEMENT_TIMEOUT_MS:-5000}
+      MAX_RESULT_ROWS: ${MAX_RESULT_ROWS:-500}
+      COST_APPROVAL_THRESHOLD: ${COST_APPROVAL_THRESHOLD:-2500.0}
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: querypilot-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000/api
+    ports:
+      - "5173:5173"
+
+volumes:
+  querypilot_pgdata:
