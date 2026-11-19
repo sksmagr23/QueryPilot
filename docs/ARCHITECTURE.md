@@ -1,102 +1,82 @@
-# QueryPilot — System & LangGraph Architecture
+# QueryPilot — System Architecture
 
-## 1. High-Level System Architecture
+QueryPilot is divided into three layers:
+1. **React Frontend:** A user-focused analytics interface for asking questions, viewing charts and summaries, reviewing high-cost query approvals, and browsing available data tables.
+2. **FastAPI & LangGraph Backend:** A 12-node workflow that analyzes questions, discovers schema, writes and validates SQL with Google Gemini and SQLGlot, checks query cost, and computes statistics.
+3. **PostgreSQL Database:** Stores the e-commerce dataset (queried via a read-only role `querypilot_ro`) and application metadata (saved history and approvals).
+
+---
+
+## 1. System Overview
 
 ```mermaid
-flowchart TB
-    subgraph Frontend ["Frontend Workspace (React + Vite + TypeScript + Tailwind)"]
-        UI_Play["Analytics Playground"]
-        UI_SQL["SQL Inspector (Monaco)"]
-        UI_Res["Results Explorer (Recharts + KPIs)"]
-        UI_Ins["Insights Panel (Evidence + Limitations)"]
-        UI_Trace["Execution Trace (React Flow)"]
-        UI_Schema["Schema Explorer (ER Graph + Semantic Catalog)"]
-        UI_Hist["Query History & Saved Analyses"]
-        UI_Appr["Human-in-the-Loop Approval Queue"]
-    end
-
-    subgraph API ["FastAPI Backend Layer (/api/*)"]
-        R_Query["/api/query & /api/query/follow-up"]
-        R_SQL["/api/sql/validate, /estimate-cost, /execute"]
-        R_Appr["/api/approvals & /approve & /reject"]
-        R_Schema["/api/schema & /api/history & /api/traces"]
-    end
-
-    subgraph LangGraph ["12-Node LangGraph StateGraph (QueryPilotState)"]
-        N1["1. Request Analyzer"]
-        N2["2. Schema Discovery"]
-        N3["3. Query Planner"]
-        N4["4. SQL Generator"]
-        N5["5. SQL Validator (SQLGlot AST)"]
-        N6["6. Cost Estimator (EXPLAIN JSON)"]
-        N7["7. Approval Gate (SHA-256 Fingerprint)"]
-        N8["8. Query Executor (Read-Only + Timeout)"]
-        N9["9. Result Validator"]
-        N10["10. Analysis Agent (Deterministic Stats)"]
-        N11["11. Visualization Builder"]
-        N12["12. Response Generator"]
-    end
-
-    subgraph Storage ["PostgreSQL 16 Warehouse & Metadata"]
-        PG_RO[("Warehouse Read-Only Role (querypilot_ro)")]
-        PG_Meta[("Persistence Store (History, Traces, Approvals)")]
-    end
-
-    subgraph LLM ["Google Gemini Provider (.env Configured)"]
-        Gemini["Google GenAI SDK (gemini-2.5-flash / gemini-2.5-flash-lite)"]
-    end
-
-    Frontend --> API
-    API --> LangGraph
-    LangGraph --> LLM
-    N2 --> PG_RO
-    N6 --> PG_RO
-    N8 --> PG_RO
-    API --> PG_Meta
+flowchart LR
+    UI["React Frontend"] --> API["FastAPI Backend"]
+    API --> LG["12-Node LangGraph Workflow"]
+    LG --> Gemini["Google Gemini (gemini-2.5-flash)"]
+    LG --> PG_RO[("PostgreSQL (Read-Only Role)")]
+    API --> PG_META[("PostgreSQL (History & Approvals)")]
 ```
 
 ---
 
-## 2. 12-Node LangGraph Workflow & Conditional Routing
+## 2. LangGraph 12-Node Workflow
 
-QueryPilot implements a strongly typed `QueryPilotState` orchestrated by a LangGraph `StateGraph` with **three independent bounded retry counters** (`sql_retry_count`, `exec_retry_count`, `result_retry_count`) to prevent infinite loops:
+Every question passes through a structured LangGraph state machine with separate bounded retry counters (`sql_retry_count`, `exec_retry_count`, `result_retry_count`):
 
 ```mermaid
 flowchart TD
     START([User Question]) --> N1["1. Request Analyzer"]
 
-    N1 -- "in_scope" --> N2["2. Schema Discovery"]
-    N1 -- "ambiguous / missing_schema / unsafe" --> N12["12. Response Generator"]
+    N1 -- "Clear & In-Scope" --> N2["2. Schema Discovery"]
+    N1 -- "Ambiguous / Missing Data / Unsafe" --> N12["12. Response Generator"]
 
     N2 --> N3["3. Query Planner"]
-    N3 --> N4["4. SQL Generator"]
+    N3 --> N4["4. SQL Generator (Gemini)"]
     N4 --> N5["5. SQL Validator (SQLGlot AST)"]
 
-    N5 -- "is_valid = true" --> N6["6. Cost Estimator (EXPLAIN JSON)"]
-    N5 -- "invalid & sql_retry_count < 2" --> N4
-    N5 -- "invalid & retries exhausted / unsafe AST" --> N12
+    N5 -- "Valid & Safe" --> N6["6. Cost Estimator (EXPLAIN)"]
+    N5 -- "Invalid SQL & Retry < 2" --> N4
+    N5 -- "Unsafe or Retries Exhausted" --> N12
 
-    N6 -- "requires_approval = true" --> N7["7. Approval Gate"]
-    N6 -- "requires_approval = false" --> N8["8. Query Executor"]
+    N6 -- "High Cost / Cross-Join" --> N7["7. Approval Gate"]
+    N6 -- "Normal Cost" --> N8["8. Query Executor (Read-Only)"]
 
-    N7 -- "approved & fingerprint valid" --> N8
-    N7 -- "pending / rejected" --> END_INT([Pause / End Turn])
+    N7 -- "User Approves" --> N8
+    N7 -- "Paused / Declined" --> END_PAUSE([Wait for User Decision])
 
-    N8 -- "execution_ok" --> N9["9. Result Validator"]
-    N8 -- "db_error & exec_retry_count < 1" --> N4
-    N8 -- "db_error & retries exhausted" --> N12
+    N8 -- "Rows Returned" --> N9["9. Result Validator"]
+    N8 -- "DB Error & Retry < 2" --> N4
+    N8 -- "Retries Exhausted" --> N12
 
-    N9 -- "valid / empty_result" --> N10["10. Analysis Agent"]
-    N9 -- "retry_needed & result_retry_count < 1" --> N4
+    N9 -- "Valid Results" --> N10["10. Analysis Agent (Python Stats)"]
+    N9 -- "Needs Retry < 1" --> N4
 
     N10 --> N11["11. Visualization Builder"]
     N11 --> N12
-    N12 --> END_DONE([Evidence-Grounded Response])
+    N12 --> END_DONE([Final Answer + Chart])
 ```
+
+### Node Responsibilities
+
+| # | Node | Role |
+|---:|---|---|
+| 1 | **Request Analyzer** | Identifies metrics, dimensions, and time ranges; stops early if the prompt is vague, unsafe, or asks for unmodeled data. |
+| 2 | **Schema Discovery** | Reads live tables, columns, foreign keys, and metric formulas from PostgreSQL. |
+| 3 | **Query Planner** | Plans required tables, joins, filters, and aggregations. |
+| 4 | **SQL Generator** | Uses Gemini to generate a single PostgreSQL `SELECT` query from the discovered schema. |
+| 5 | **SQL Validator** | Uses SQLGlot AST parsing to block DDL/DML, writable CTEs, dangerous functions, system schemas, and invalid columns. |
+| 6 | **Cost Estimator** | Runs `EXPLAIN (FORMAT JSON)` to estimate execution cost and detect cartesian joins without running the query. |
+| 7 | **Approval Gate** | Pauses expensive queries with a SHA-256 context fingerprint until a user approves or declines them. |
+| 8 | **Query Executor** | Runs the query via `querypilot_ro` with `SET LOCAL TRANSACTION READ ONLY`, a 5-second timeout, and a 500-row cap. |
+| 9 | **Result Validator** | Checks for empty results, nulls, or unexpected shapes. |
+| 10 | **Analysis Agent** | Computes totals, averages, top/bottom performers, and percentage shares in Python. |
+| 11 | **Visualization Builder** | Chooses the chart specification (`bar`, `line`, `area`, `pie`, or `composed`). |
+| 12 | **Response Generator** | Produces the executive summary, key takeaways, calculation assumptions, and limitations. |
 
 ---
 
-## 3. E-Commerce Data Warehouse Schema (`seed=42`)
+## 3. Database Schema (7 Tables)
 
 ```mermaid
 erDiagram
@@ -110,17 +90,8 @@ erDiagram
 
 ---
 
-## 4. Defense-in-Depth Safety & Approval Architecture
+## 4. Safety Controls
 
-1. **Full-AST Structural SQL Validation (`sql_validator.py`):**
-   - Uses `sqlglot.parse()` to reject multi-statement queries (`len(statements) != 1`).
-   - Traverses the entire AST via `ast.walk()` so destructive operations hidden inside CTEs (`WITH del AS (DELETE FROM customers RETURNING *) SELECT * FROM del`), subqueries, `SELECT ... INTO`, or locking clauses (`FOR UPDATE`) are deterministically blocked.
-   - Rejects dangerous PostgreSQL functions (`pg_sleep`, `pg_read_file`, `pg_terminate_backend`, `dblink`, `lo_import`) and system schemas (`pg_catalog`, `information_schema`, `pg_shadow`).
-   - Verifies all referenced tables and qualified columns against the discovered warehouse schema.
-2. **Database-Level Read-Only Enforcement (`engine.py` & `init_ro_role.sql`):**
-   - Queries execute via `querypilot_ro`, a dedicated PostgreSQL role configured with `ALTER ROLE querypilot_ro SET default_transaction_read_only = on`.
-   - Every query execution opens a read-only transaction (`SET LOCAL TRANSACTION READ ONLY`) with `SET LOCAL statement_timeout = '5000ms'` and fetches at most `max_rows + 1` rows at the cursor level.
-3. **Context-Bound Approval Gate (`routes_approval.py` & `persistence.py`):**
-   - Computes a SHA-256 `context_fingerprint` over `(normalized_sql, database_role, max_rows, timeout_ms)`.
-   - If the SQL or execution context changes after an approval request is created, the approval is invalidated (`409 Conflict`).
-   - Atomic `approval_executed` locking prevents duplicate execution on repeated approval requests.
+- **AST Validation (`sql_validator.py`):** Full syntax tree walk blocks multi-statement queries, writable CTEs (`WITH del AS (DELETE ...)`), `SELECT INTO`, `FOR UPDATE`, `pg_sleep`, `pg_read_file`, and `pg_catalog`.
+- **Database Role (`querypilot_ro`):** Enforces read-only transactions at the PostgreSQL engine level.
+- **Tamper-Proof Approvals (`persistence.py`):** Binds each approval to a SHA-256 hash of the SQL and execution limits, invalidating stale approvals and preventing duplicate runs.
