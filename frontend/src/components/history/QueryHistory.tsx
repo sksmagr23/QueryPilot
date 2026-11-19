@@ -56,30 +56,32 @@ export const QueryHistory: React.FC<QueryHistoryProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/90 px-5 py-4">
-        <div className="flex items-center gap-2.5">
-          <History className="h-5 w-5 text-emerald-400" />
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#163661] bg-[#0A1F3D]/95 px-6 py-5 shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#00C8FF]/30 bg-[#168BFF]/15 text-[#00C8FF]">
+            <History className="h-5 w-5" />
+          </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-100">
+            <h2 className="text-base font-bold text-[#EAF3FF]">
               Saved & Past Questions ({items.length})
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[#91A9C5]">
               Reopen any previous question to view its charts, summary, and
-              data table.
+              records.
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-xl border border-slate-800 bg-slate-950 p-1">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex rounded-xl border border-[#163661] bg-[#06152B] p-1">
             <button
               type="button"
               onClick={() => setBookmarkedOnly(false)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition ${
                 !bookmarkedOnly
-                  ? "bg-emerald-600 text-white"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-[#168BFF] text-white"
+                  : "text-[#91A9C5] hover:text-[#EAF3FF]"
               }`}
             >
               All Questions
@@ -87,13 +89,13 @@ export const QueryHistory: React.FC<QueryHistoryProps> = ({
             <button
               type="button"
               onClick={() => setBookmarkedOnly(true)}
-              className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition ${
                 bookmarkedOnly
-                  ? "bg-amber-600 text-white"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-[#168BFF] text-white"
+                  : "text-[#91A9C5] hover:text-[#EAF3FF]"
               }`}
             >
-              <Bookmark className="h-3 w-3" /> Saved Reports
+              <Bookmark className="h-3.5 w-3.5 text-[#00C8FF]" /> Saved Reports
             </button>
           </div>
 
@@ -102,21 +104,21 @@ export const QueryHistory: React.FC<QueryHistoryProps> = ({
               e.preventDefault();
               loadHistory();
             }}
-            className="flex items-center gap-1.5"
+            className="flex items-center gap-2"
           >
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
+              <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-[#91A9C5]" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search past questions..."
-                className="rounded-xl border border-slate-700 bg-slate-950 pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+                placeholder="Search questions..."
+                className="rounded-xl border border-[#1B3F70] bg-[#06152B] pl-9 pr-3 py-1.5 text-xs text-[#EAF3FF] placeholder-[#91A9C5]/60 focus:border-[#168BFF] focus:outline-none"
               />
             </div>
             <button
               type="submit"
-              className="rounded-xl bg-slate-800 px-3.5 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700 transition"
+              className="rounded-xl border border-[#1B3F70] bg-[#0D2548] px-3.5 py-1.5 text-xs font-semibold text-[#EAF3FF] hover:border-[#168BFF] transition"
             >
               Search
             </button>
@@ -125,53 +127,53 @@ export const QueryHistory: React.FC<QueryHistoryProps> = ({
       </div>
 
       {loading ? (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-10 text-center text-xs text-slate-400">
+        <div className="rounded-2xl border border-[#163661] bg-[#091D38]/60 p-12 text-center text-xs text-[#91A9C5]">
           Loading past questions...
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-10 text-center text-xs text-slate-400">
+        <div className="rounded-2xl border border-[#163661] bg-[#091D38]/60 p-12 text-center text-xs text-[#91A9C5]">
           No past questions found yet.
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {items.map((item) => (
             <div
               key={item.query_id}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4 hover:border-slate-700 transition"
+              className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#163661] bg-[#091D38]/90 p-5 hover:border-[#168BFF]/50 transition"
             >
               <div className="space-y-1 max-w-3xl">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold text-sm text-slate-100">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="font-bold text-sm text-[#EAF3FF]">
                     {item.question}
                   </span>
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold capitalize ${
                       item.status === "completed"
-                        ? "bg-emerald-500/15 text-emerald-300"
+                        ? "bg-[#00C8FF]/15 text-[#00C8FF]"
                         : item.status === "awaiting_approval"
-                          ? "bg-amber-500/15 text-amber-300"
+                          ? "bg-amber-400/15 text-amber-300"
                           : "bg-rose-500/15 text-rose-300"
                     }`}
                   >
                     {item.status === "awaiting_approval"
-                      ? "Needs Review"
+                      ? "Pending Review"
                       : item.status.replace("_", " ")}
                   </span>
-                  <span className="text-xs text-slate-400">
-                    {item.row_count} rows
+                  <span className="text-xs text-[#91A9C5]">
+                    {item.row_count} records
                   </span>
                 </div>
-                <p className="text-xs text-slate-400">{item.title}</p>
+                <p className="text-xs text-[#91A9C5]">{item.title}</p>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleToggleBookmark(item)}
-                  className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-medium transition ${
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
                     item.bookmarked
-                      ? "border-amber-500/50 bg-amber-500/20 text-amber-300"
-                      : "border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700"
+                      ? "border-[#00C8FF]/50 bg-[#00C8FF]/15 text-[#00C8FF]"
+                      : "border-[#1B3F70] bg-[#0D2548] text-[#EAF3FF] hover:border-[#168BFF]"
                   }`}
                 >
                   <Bookmark className="h-3.5 w-3.5" />
@@ -180,14 +182,14 @@ export const QueryHistory: React.FC<QueryHistoryProps> = ({
                 <button
                   type="button"
                   onClick={() => handleOpen(item.query_id)}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#168BFF] px-4 py-1.5 text-xs font-semibold text-white shadow-sm shadow-[#168BFF]/30 hover:bg-[#168BFF]/90 transition"
                 >
                   <ExternalLink className="h-3.5 w-3.5" /> Open Report
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDelete(item.query_id)}
-                  className="inline-flex items-center rounded-xl border border-slate-700 bg-slate-800 p-2 text-slate-400 hover:text-rose-400 transition"
+                  className="inline-flex items-center rounded-xl border border-[#1B3F70] bg-[#06152B] p-2 text-[#91A9C5] hover:text-rose-400 transition"
                   title="Remove from history"
                 >
                   <Trash2 className="h-3.5 w-3.5" />

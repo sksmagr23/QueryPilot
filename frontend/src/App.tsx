@@ -1,16 +1,17 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
   BarChart3,
+  CheckCircle2,
   Database,
-  GitBranch,
   History,
+  Lock,
   MessageSquarePlus,
   Send,
   ShieldAlert,
-  ShieldCheck,
   Sparkles,
+  TrendingUp,
 } from "lucide-react";
 import { apiClient } from "./api/client";
 import { ApprovalQueue } from "./components/approvals/ApprovalQueue";
@@ -18,8 +19,6 @@ import { QueryHistory } from "./components/history/QueryHistory";
 import { InsightsPanel } from "./components/insights/InsightsPanel";
 import { ResultsExplorer } from "./components/results/ResultsExplorer";
 import { SchemaExplorer } from "./components/schema/SchemaExplorer";
-import { SqlInspector } from "./components/sql/SqlInspector";
-import { ExecutionTrace } from "./components/trace/ExecutionTrace";
 import type {
   HealthStatus,
   QueryPilotRun,
@@ -29,12 +28,12 @@ import type {
 const SAMPLE_QUESTIONS = [
   {
     label: "Top Revenue Categories",
-    description: "See which product categories bring in the most sales",
+    description: "Discover which product categories drive the highest sales",
     question: "Which product categories generate the most revenue?",
   },
   {
-    label: "Monthly Sales Comparison",
-    description: "Understand why revenue changed compared with last month",
+    label: "Monthly Sales Shift",
+    description: "Compare recent monthly performance and identify key drivers",
     question: "Why did revenue decrease compared with the previous month?",
   },
   {
@@ -44,17 +43,17 @@ const SAMPLE_QUESTIONS = [
   },
   {
     label: "Declining Products",
-    description: "Spot products whose sales dropped between Q2 and Q3",
+    description: "Spot products whose sales decreased between Q2 and Q3",
     question: "Which products have declining sales?",
   },
   {
-    label: "Cancellation Rates by Region",
-    description: "Identify regions with the highest order cancellations",
+    label: "Regional Cancellations",
+    description: "Identify regions with the highest order cancellation rates",
     question: "Which regions have the highest order cancellation rates?",
   },
   {
-    label: "Large Cross-Table Scan (Requires Approval)",
-    description: "Test how heavy queries pause for your manual approval",
+    label: "Full Cross-Dataset Scan",
+    description: "Preview how large data requests pause for your approval",
     question:
       "Run a cross join of every combination of customer and website event and order item",
   },
@@ -62,7 +61,7 @@ const SAMPLE_QUESTIONS = [
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
-    "playground" | "trace" | "schema" | "history" | "approvals"
+    "playground" | "approvals" | "history" | "schema"
   >("playground");
   const [questionInput, setQuestionInput] = useState<string>("");
   const [currentRun, setCurrentRun] = useState<QueryPilotRun | null>(null);
@@ -79,8 +78,6 @@ export const App: React.FC = () => {
   const [schema, setSchema] = useState<SchemaDiscoveryResponse | null>(null);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0);
 
-  const sqlSectionRef = useRef<HTMLDivElement | null>(null);
-
   const refreshSystemStatus = async () => {
     try {
       const [h, s, app] = await Promise.all([
@@ -92,11 +89,11 @@ export const App: React.FC = () => {
       setSchema(s);
       setPendingApprovalsCount(app.pending_count);
     } catch {
+      // backend might still be booting
     }
   };
 
   useEffect(() => {
-    // Only load health, schema, and pending approval counts on mount — never auto-run queries
     refreshSystemStatus();
   }, []);
 
@@ -127,7 +124,7 @@ export const App: React.FC = () => {
       await refreshSystemStatus();
     } catch (err) {
       setErrorBanner(
-        err instanceof Error ? err.message : "Failed to run analytics query"
+        err instanceof Error ? err.message : "Failed to run analytics question"
       );
     } finally {
       setLoading(false);
@@ -154,41 +151,47 @@ export const App: React.FC = () => {
     activeTab !== "approvals" &&
     (currentRun?.status === "awaiting_approval" || pendingApprovalsCount > 0);
 
+  const totalRecordsCount =
+    schema?.tables.reduce((acc, t) => acc + (t.row_count || 0), 0) || 0;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <header className="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/95 backdrop-blur px-6 py-3.5">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-indigo-600 shadow-lg shadow-emerald-500/20">
+    <div className="relative min-h-screen bg-[#06152B] text-[#EAF3FF] flex flex-col overflow-x-hidden">
+      
+      <div className="pointer-events-none fixed -top-40 left-1/2 h-[420px] w-[780px] -translate-x-1/2 rounded-full bg-[#168BFF]/15 blur-[130px]" />
+      <div className="pointer-events-none fixed top-40 right-10 h-72 w-72 rounded-full bg-[#00C8FF]/8 blur-[120px]" />
+
+      <header className="sticky top-0 z-30 border-b border-[#142F54]/80 bg-[#06152B]/85 backdrop-blur-xl px-6 py-4">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#168BFF] to-[#00C8FF] shadow-lg shadow-[#168BFF]/30">
               <BarChart3 className="h-5 w-5 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-bold tracking-tight text-white">
+              <div className="flex items-center gap-2.5">
+                <span className="text-lg font-extrabold tracking-tight text-[#EAF3FF]">
                   QueryPilot
                 </span>
-                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
-                  AI Business Analytics
+                <span className="rounded-full border border-[#00C8FF]/30 bg-[#00C8FF]/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#00C8FF]">
+                  Business Intelligence
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                Ask questions in plain English • Get verified charts & insights
+              <p className="text-xs text-[#91A9C5]">
+                Instant answers, interactive charts, and verified store insights
               </p>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/90 p-1">
+          <nav className="flex flex-wrap items-center gap-1 rounded-2xl border border-[#163661] bg-[#091D38]/90 p-1.5">
             {(
               [
                 {
                   id: "playground",
-                  label: "Workspace",
+                  label: "Analytics",
                   icon: Sparkles,
                 },
                 {
                   id: "approvals",
-                  label: "Pending Approvals",
+                  label: "Approvals",
                   icon: ShieldAlert,
                   badge: pendingApprovalsCount,
                 },
@@ -202,11 +205,6 @@ export const App: React.FC = () => {
                   label: "Data Catalog",
                   icon: Database,
                 },
-                {
-                  id: "trace",
-                  label: "Workflow Steps",
-                  icon: GitBranch,
-                },
               ] as const
             ).map((tab) => {
               const Icon = tab.icon;
@@ -216,16 +214,16 @@ export const App: React.FC = () => {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-medium transition ${
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition ${
                     active
-                      ? "bg-emerald-600 text-white shadow"
-                      : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                      ? "bg-[#168BFF] text-white shadow-md shadow-[#168BFF]/35"
+                      : "text-[#91A9C5] hover:bg-[#0D274C] hover:text-[#EAF3FF]"
                   }`}
                 >
                   <Icon className="h-3.5 w-3.5" />
                   <span>{tab.label}</span>
                   {"badge" in tab && tab.badge > 0 && (
-                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-slate-950 animate-pulse">
+                    <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-[#00C8FF] px-1.5 py-0.5 text-[10px] font-extrabold text-[#06152B] animate-pulse">
                       {tab.badge}
                     </span>
                   )}
@@ -234,67 +232,129 @@ export const App: React.FC = () => {
             })}
           </nav>
 
-          {/* Clean Read-Only Status Pill (Configured via .env) */}
-          <div className="hidden lg:flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+          <div className="hidden lg:flex items-center">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#163661] bg-[#0A1F3D] px-3.5 py-1.5 text-xs font-medium text-[#91A9C5]">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  health?.database.connected ? "bg-[#00C8FF]" : "bg-amber-400"
+                }`}
+              />
               {health?.database.connected
-                ? "Safe Read-Only Mode Active"
-                : "Connecting to Database..."}
+                ? "Protected Data Connection"
+                : "Connecting..."}
             </span>
           </div>
         </div>
       </header>
 
       {showApprovalAlert && (
-        <div className="border-b border-amber-500/40 bg-amber-950/60 px-6 py-3">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
+        <div className="relative z-20 border-b border-[#00C8FF]/40 bg-gradient-to-r from-[#0A2348] via-[#0E2F61] to-[#0A2348] px-6 py-3.5">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
-                <AlertTriangle className="h-4 w-4 animate-bounce" />
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00C8FF]/20 text-[#00C8FF]">
+                <AlertTriangle className="h-4 w-4" />
               </span>
-              <div className="text-xs sm:text-sm text-amber-100">
-                <strong className="font-semibold text-amber-300">
-                  Action Required:
+              <div className="text-xs sm:text-sm text-[#EAF3FF]">
+                <strong className="font-bold text-[#00C8FF]">
+                  Approval Required:
                 </strong>{" "}
                 {currentRun?.status === "awaiting_approval"
-                  ? "Your query scans a large volume of data and is paused waiting for your approval."
-                  : `You have ${pendingApprovalsCount} pending query ${
+                  ? "This request scans a large dataset and is paused waiting for your confirmation."
+                  : `You have ${pendingApprovalsCount} pending ${
                       pendingApprovalsCount === 1 ? "request" : "requests"
-                    } waiting for review.`}
+                    } waiting in the Approvals tab.`}
               </div>
             </div>
             <button
               type="button"
               onClick={() => setActiveTab("approvals")}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-1.5 text-xs font-bold text-slate-950 shadow hover:bg-amber-400 transition"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#00C8FF] px-4 py-1.5 text-xs font-bold text-[#06152B] shadow hover:bg-[#00C8FF]/90 transition"
             >
-              <span>Go to Pending Approvals</span>
+              <span>Open Approvals Tab</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
       )}
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-6 space-y-6">
+      <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-6 py-8 space-y-8">
         {activeTab === "playground" && (
-          <div className="space-y-6">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-lg space-y-4">
+          <div className="space-y-8">
+            <div className="mx-auto max-w-4xl text-center space-y-4 pt-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#1B3F70] bg-[#0A1F3D]/80 px-4 py-1.5 text-xs font-semibold text-[#00C8FF]">
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>AI-Powered Store Analytics</span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#EAF3FF]">
+                Ask anything about your business performance
+              </h1>
+              <p className="mx-auto max-w-2xl text-sm sm:text-base text-[#91A9C5]">
+                Explore revenue trends, customer segments, product performance,
+                and regional orders in plain English.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="flex items-center gap-3.5 rounded-2xl border border-[#163661] bg-[#091D38]/80 px-5 py-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#168BFF]/15 text-[#00C8FF]">
+                  <Database className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-[#91A9C5]">
+                    Connected Datasets
+                  </div>
+                  <div className="text-sm font-bold text-[#EAF3FF]">
+                    {schema ? `${schema.tables.length} Store Tables` : "7 Store Tables"}{" "}
+                    {totalRecordsCount > 0 &&
+                      `• ${totalRecordsCount.toLocaleString()} Records`}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3.5 rounded-2xl border border-[#163661] bg-[#091D38]/80 px-5 py-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#168BFF]/15 text-[#00C8FF]">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-[#91A9C5]">
+                    Verified Calculations
+                  </div>
+                  <div className="text-sm font-bold text-[#EAF3FF]">
+                    Official Store Metrics & Charts
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3.5 rounded-2xl border border-[#163661] bg-[#091D38]/80 px-5 py-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#168BFF]/15 text-[#00C8FF]">
+                  <Lock className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-[#91A9C5]">
+                    Data Protection
+                  </div>
+                  <div className="text-sm font-bold text-[#EAF3FF]">
+                    Read-Only Access & Approval Guard
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#1B3F70] bg-gradient-to-b from-[#0B2244] to-[#081A35] p-6 shadow-[0_20px_50px_rgba(3,10,24,0.55)] space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-xs font-medium text-slate-300">
+                <div className="text-xs font-medium text-[#91A9C5]">
                   {conversationHistory.length > 0 ? (
-                    <span className="inline-flex items-center gap-1.5 text-emerald-400">
-                      <Sparkles className="h-3.5 w-3.5" />
+                    <span className="inline-flex items-center gap-1.5 text-[#00C8FF]">
+                      <TrendingUp className="h-3.5 w-3.5" />
                       Follow-up mode active ({conversationHistory.length}{" "}
                       {conversationHistory.length === 1
                         ? "question"
                         : "questions"}{" "}
-                      in this conversation)
+                      in this thread)
                     </span>
                   ) : (
-                    <span className="text-slate-400">
-                      Ask any question about your store&apos;s revenue, orders,
-                      products, customers, or regions
+                    <span>
+                      Type a question below or pick a starter topic to begin
                     </span>
                   )}
                 </div>
@@ -302,10 +362,10 @@ export const App: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleStartNewThread}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700 transition"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[#1B3F70] bg-[#0D2548] px-3.5 py-1.5 text-xs font-semibold text-[#EAF3FF] hover:border-[#168BFF] transition"
                   >
-                    <MessageSquarePlus className="h-3.5 w-3.5 text-emerald-400" />
-                    Start New Topic
+                    <MessageSquarePlus className="h-3.5 w-3.5 text-[#00C8FF]" />
+                    New Topic
                   </button>
                 )}
               </div>
@@ -315,23 +375,23 @@ export const App: React.FC = () => {
                   e.preventDefault();
                   handleAskQuestion();
                 }}
-                className="flex flex-col gap-2.5 sm:flex-row"
+                className="flex flex-col gap-3 sm:flex-row"
               >
                 <input
                   type="text"
                   value={questionInput}
                   onChange={(e) => setQuestionInput(e.target.value)}
                   placeholder="e.g., Which product categories generate the most revenue?"
-                  className="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+                  className="flex-1 rounded-xl border border-[#1B3F70] bg-[#06152B] px-5 py-3.5 text-sm text-[#EAF3FF] placeholder-[#91A9C5]/60 focus:border-[#168BFF] focus:outline-none"
                 />
                 <button
                   type="submit"
                   disabled={loading || !questionInput.trim()}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-500 disabled:opacity-50 transition"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#168BFF] to-[#00C8FF] px-7 py-3.5 text-sm font-bold text-[#06152B] shadow-lg shadow-[#168BFF]/30 hover:opacity-95 disabled:opacity-40 transition"
                 >
                   <Send className="h-4 w-4" />
                   {loading
-                    ? "Analyzing Data..."
+                    ? "Analyzing..."
                     : conversationHistory.length > 0
                       ? "Ask Follow-Up"
                       : "Get Answer"}
@@ -345,57 +405,59 @@ export const App: React.FC = () => {
               </div>
             )}
 
-            {/* Prominent Inline Callout when Current Run Pauses for Human Approval */}
+            {/* Inline Callout when Current Run Pauses for Human Approval */}
             {currentRun?.status === "awaiting_approval" && (
-              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border-2 border-amber-500/60 bg-amber-950/40 p-5 shadow-lg">
-                <div className="flex items-start gap-3.5">
-                  <AlertTriangle className="h-6 w-6 text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#00C8FF]/50 bg-[#0A2246] p-6 shadow-xl">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#00C8FF]/15 text-[#00C8FF] shrink-0">
+                    <AlertTriangle className="h-6 w-6" />
+                  </div>
                   <div className="space-y-1">
-                    <div className="text-base font-bold text-amber-200">
-                      Approval Needed Before Running This Query
+                    <div className="text-base font-bold text-[#EAF3FF]">
+                      Your Approval Is Needed to Run This Request
                     </div>
-                    <p className="text-xs sm:text-sm text-amber-200/90 max-w-2xl">
+                    <p className="text-xs sm:text-sm text-[#91A9C5] max-w-2xl">
                       {currentRun.cost_estimate?.approval_reason ||
-                        "This query joins a large number of records. Please review and approve it in the Pending Approvals tab to continue."}
+                        "This request combines a large volume of records across multiple datasets. Please confirm it in the Approvals tab to proceed."}
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setActiveTab("approvals")}
-                  className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-950 shadow hover:bg-amber-400 transition"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#168BFF] px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-[#168BFF]/35 hover:bg-[#168BFF]/90 transition"
                 >
-                  <span>Review in Pending Approvals</span>
+                  <span>Go to Approvals Tab</span>
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             )}
 
             {!currentRun && !loading && (
-              <div className="space-y-3">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 px-1">
-                  Popular Questions to Try (Click any card to run):
+              <div className="space-y-3.5">
+                <div className="text-xs font-bold uppercase tracking-wider text-[#91A9C5] px-1">
+                  Starter Questions
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {SAMPLE_QUESTIONS.map((item) => (
                     <button
                       key={item.label}
                       type="button"
                       onClick={() => handleAskQuestion(item.question)}
-                      className="group flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/70 p-4 text-left hover:border-emerald-500/50 hover:bg-slate-900 transition"
+                      className="group flex flex-col justify-between rounded-2xl border border-[#163661] bg-[#091D38]/80 p-5 text-left hover:border-[#168BFF] hover:bg-[#0C2548] transition shadow-sm"
                     >
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-emerald-400 group-hover:text-emerald-300">
+                          <span className="text-xs font-bold text-[#00C8FF]">
                             {item.label}
                           </span>
-                          <ArrowRight className="h-3.5 w-3.5 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
+                          <ArrowRight className="h-3.5 w-3.5 text-[#91A9C5] group-hover:text-[#00C8FF] group-hover:translate-x-0.5 transition" />
                         </div>
-                        <p className="text-sm font-medium text-slate-100">
+                        <p className="text-sm font-semibold text-[#EAF3FF] leading-snug">
                           &ldquo;{item.question}&rdquo;
                         </p>
                       </div>
-                      <p className="mt-3 text-xs text-slate-400">
+                      <p className="mt-4 text-xs text-[#91A9C5]">
                         {item.description}
                       </p>
                     </button>
@@ -404,17 +466,18 @@ export const App: React.FC = () => {
               </div>
             )}
 
+            {/* Loading State */}
             {loading && (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-10 text-center space-y-2">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400 animate-pulse">
-                  <Sparkles className="h-5 w-5" />
+              <div className="rounded-2xl border border-[#163661] bg-[#091D38]/80 p-12 text-center space-y-3">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#168BFF]/20 text-[#00C8FF] animate-pulse">
+                  <Sparkles className="h-6 w-6" />
                 </div>
-                <div className="text-sm font-semibold text-slate-200">
-                  Analyzing your question with Gemini...
+                <div className="text-base font-bold text-[#EAF3FF]">
+                  Preparing your answer...
                 </div>
-                <p className="text-xs text-slate-400">
-                  Checking available tables, verifying query safety, running on
-                  read-only data, and building your chart.
+                <p className="text-xs text-[#91A9C5]">
+                  Analyzing store data, calculating key figures, and building
+                  your chart.
                 </p>
               </div>
             )}
@@ -424,43 +487,12 @@ export const App: React.FC = () => {
                 <InsightsPanel
                   currentRun={currentRun}
                   onSelectFollowUp={(q) => handleAskQuestion(q)}
-                  onJumpToSql={() =>
-                    sqlSectionRef.current?.scrollIntoView({
-                      behavior: "smooth",
-                    })
-                  }
                   onToggleBookmark={handleToggleBookmarkCurrent}
                 />
-
                 <ResultsExplorer currentRun={currentRun} />
-
-                <div ref={sqlSectionRef}>
-                  <SqlInspector
-                    currentRun={currentRun}
-                    onRunUpdated={(updated) => {
-                      setCurrentRun(updated);
-                      refreshSystemStatus();
-                    }}
-                    onOpenApprovals={() => setActiveTab("approvals")}
-                  />
-                </div>
               </>
             )}
           </div>
-        )}
-
-        {activeTab === "trace" && <ExecutionTrace currentRun={currentRun} />}
-
-        {activeTab === "schema" && <SchemaExplorer schema={schema} />}
-
-        {activeTab === "history" && (
-          <QueryHistory
-            onSelectQuery={(run) => {
-              setCurrentRun(run);
-              setQuestionInput(run.question);
-              setActiveTab("playground");
-            }}
-          />
         )}
 
         {activeTab === "approvals" && (
@@ -472,6 +504,18 @@ export const App: React.FC = () => {
             }}
           />
         )}
+
+        {activeTab === "history" && (
+          <QueryHistory
+            onSelectQuery={(run) => {
+              setCurrentRun(run);
+              setQuestionInput(run.question);
+              setActiveTab("playground");
+            }}
+          />
+        )}
+
+        {activeTab === "schema" && <SchemaExplorer schema={schema} />}
       </main>
     </div>
   );

@@ -19,7 +19,6 @@ import {
 } from "recharts";
 import {
   BarChart3,
-  Clock,
   Download,
   LineChart as LineChartIcon,
   PieChart as PieChartIcon,
@@ -33,15 +32,15 @@ interface ResultsExplorerProps {
   currentRun: QueryPilotRun | null;
 }
 
-const PIE_COLORS = [
-  "#10b981",
-  "#6366f1",
-  "#f59e0b",
-  "#06b6d4",
-  "#ec4899",
-  "#8b5cf6",
-  "#14b8a6",
-  "#f97316",
+const CHART_PALETTE = [
+  "#168BFF",
+  "#00C8FF",
+  "#38BDF8",
+  "#60A5FA",
+  "#818CF8",
+  "#2DD4BF",
+  "#F59E0B",
+  "#F43F5E",
 ];
 
 export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
@@ -105,7 +104,8 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
       : columns.length > 1
         ? [columns[columns.length - 1]]
         : [];
-  const chartData = viz?.data && viz.data.length > 0 ? viz.data : rows.slice(0, 25);
+  const chartData =
+    viz?.data && viz.data.length > 0 ? viz.data : rows.slice(0, 25);
 
   const handleSort = (col: string) => {
     if (sortCol === col) {
@@ -117,44 +117,44 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* KPI Summary Cards */}
+    <div className="space-y-6">
+      {/* Horizontal Statistics Strip */}
       {analysis?.kpis && analysis.kpis.length > 0 && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {analysis.kpis.map((kpi, idx) => (
             <div
               key={idx}
-              className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-sm"
+              className="relative overflow-hidden rounded-2xl border border-[#163661] bg-gradient-to-b from-[#0A1F3D] to-[#071830] p-5 shadow-md"
             >
-              <div className="text-xs font-medium uppercase tracking-wider text-slate-400">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-[#91A9C5]">
                 {kpi.label}
               </div>
-              <div className="mt-1.5 text-xl font-bold text-slate-100 font-mono">
+              <div className="mt-2 text-2xl font-extrabold tracking-tight text-[#EAF3FF]">
                 {kpi.value}
               </div>
-              <div className="mt-1 text-xs text-slate-400">{kpi.subtext}</div>
+              <div className="mt-1 text-xs text-[#00C8FF]">{kpi.subtext}</div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Visualization Card */}
+      {/* Interactive Chart Card */}
       {rows.length > 0 && yKeys.length > 0 && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="rounded-2xl border border-[#163661] bg-[#091D38]/90 p-6 shadow-lg">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-semibold text-slate-100">
-                {viz?.title || "Query Results Visualization"}
+              <h3 className="text-base font-bold text-[#EAF3FF]">
+                {viz?.title || "Visual Breakdown"}
               </h3>
-              <p className="text-xs text-slate-400">{viz?.subtitle}</p>
+              <p className="text-xs text-[#91A9C5]">{viz?.subtitle}</p>
             </div>
-            <div className="flex items-center gap-1 rounded-lg border border-slate-800 bg-slate-950 p-1">
+            <div className="flex items-center gap-1 rounded-xl border border-[#163661] bg-[#06152B] p-1">
               {(
                 [
                   { id: "bar", label: "Bar", icon: BarChart3 },
                   { id: "line", label: "Line", icon: LineChartIcon },
                   { id: "area", label: "Area", icon: LineChartIcon },
-                  { id: "composed", label: "Dual", icon: BarChart3 },
+                  { id: "composed", label: "Combo", icon: BarChart3 },
                   { id: "pie", label: "Pie", icon: PieChartIcon },
                 ] as const
               ).map((item) => {
@@ -165,10 +165,10 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
                     key={item.id}
                     type="button"
                     onClick={() => setChartTypeOverride(item.id)}
-                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                       active
-                        ? "bg-emerald-600 text-white"
-                        : "text-slate-400 hover:text-slate-200"
+                        ? "bg-[#168BFF] text-white shadow-sm shadow-[#168BFF]/40"
+                        : "text-[#91A9C5] hover:text-[#EAF3FF]"
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -179,17 +179,19 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
             </div>
           </div>
 
-          <div className="h-72 w-full">
+          <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               {activeChartType === "line" ? (
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey={xKey} stroke="#94a3b8" fontSize={11} />
-                  <YAxis stroke="#94a3b8" fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#142F54" />
+                  <XAxis dataKey={xKey} stroke="#91A9C5" fontSize={11} />
+                  <YAxis stroke="#91A9C5" fontSize={11} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f172a",
-                      borderColor: "#334155",
+                      backgroundColor: "#06152B",
+                      borderColor: "#168BFF",
+                      borderRadius: "12px",
+                      color: "#EAF3FF",
                       fontSize: "12px",
                     }}
                   />
@@ -199,7 +201,7 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
                       key={yk}
                       type="monotone"
                       dataKey={yk}
-                      stroke={PIE_COLORS[i % PIE_COLORS.length]}
+                      stroke={CHART_PALETTE[i % CHART_PALETTE.length]}
                       strokeWidth={2.5}
                       dot={{ r: 4 }}
                     />
@@ -207,13 +209,15 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
                 </LineChart>
               ) : activeChartType === "area" ? (
                 <AreaChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey={xKey} stroke="#94a3b8" fontSize={11} />
-                  <YAxis stroke="#94a3b8" fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#142F54" />
+                  <XAxis dataKey={xKey} stroke="#91A9C5" fontSize={11} />
+                  <YAxis stroke="#91A9C5" fontSize={11} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f172a",
-                      borderColor: "#334155",
+                      backgroundColor: "#06152B",
+                      borderColor: "#168BFF",
+                      borderRadius: "12px",
+                      color: "#EAF3FF",
                       fontSize: "12px",
                     }}
                   />
@@ -223,8 +227,8 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
                       key={yk}
                       type="monotone"
                       dataKey={yk}
-                      stroke={PIE_COLORS[i % PIE_COLORS.length]}
-                      fill={PIE_COLORS[i % PIE_COLORS.length]}
+                      stroke={CHART_PALETTE[i % CHART_PALETTE.length]}
+                      fill={CHART_PALETTE[i % CHART_PALETTE.length]}
                       fillOpacity={0.22}
                     />
                   ))}
@@ -233,8 +237,10 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
                 <PieChart>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f172a",
-                      borderColor: "#334155",
+                      backgroundColor: "#06152B",
+                      borderColor: "#168BFF",
+                      borderRadius: "12px",
+                      color: "#EAF3FF",
                       fontSize: "12px",
                     }}
                   />
@@ -245,53 +251,57 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
                     nameKey={xKey}
                     cx="50%"
                     cy="50%"
-                    outerRadius={95}
+                    outerRadius={105}
                     label
                   >
                     {chartData.map((_, idx) => (
                       <Cell
                         key={idx}
-                        fill={PIE_COLORS[idx % PIE_COLORS.length]}
+                        fill={CHART_PALETTE[idx % CHART_PALETTE.length]}
                       />
                     ))}
                   </Pie>
                 </PieChart>
               ) : activeChartType === "composed" ? (
                 <ComposedChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey={xKey} stroke="#94a3b8" fontSize={11} />
-                  <YAxis stroke="#94a3b8" fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#142F54" />
+                  <XAxis dataKey={xKey} stroke="#91A9C5" fontSize={11} />
+                  <YAxis stroke="#91A9C5" fontSize={11} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f172a",
-                      borderColor: "#334155",
+                      backgroundColor: "#06152B",
+                      borderColor: "#168BFF",
+                      borderRadius: "12px",
+                      color: "#EAF3FF",
                       fontSize: "12px",
                     }}
                   />
                   <Legend />
                   <Bar
                     dataKey={yKeys[0]}
-                    fill="#10b981"
-                    radius={[4, 4, 0, 0]}
+                    fill="#168BFF"
+                    radius={[6, 6, 0, 0]}
                   />
                   {yKeys[1] && (
                     <Line
                       type="monotone"
                       dataKey={yKeys[1]}
-                      stroke="#6366f1"
+                      stroke="#00C8FF"
                       strokeWidth={2.5}
                     />
                   )}
                 </ComposedChart>
               ) : (
                 <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey={xKey} stroke="#94a3b8" fontSize={11} />
-                  <YAxis stroke="#94a3b8" fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#142F54" />
+                  <XAxis dataKey={xKey} stroke="#91A9C5" fontSize={11} />
+                  <YAxis stroke="#91A9C5" fontSize={11} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f172a",
-                      borderColor: "#334155",
+                      backgroundColor: "#06152B",
+                      borderColor: "#168BFF",
+                      borderRadius: "12px",
+                      color: "#EAF3FF",
                       fontSize: "12px",
                     }}
                   />
@@ -300,8 +310,8 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
                     <Bar
                       key={yk}
                       dataKey={yk}
-                      fill={PIE_COLORS[i % PIE_COLORS.length]}
-                      radius={[4, 4, 0, 0]}
+                      fill={CHART_PALETTE[i % CHART_PALETTE.length]}
+                      radius={[6, 6, 0, 0]}
                     />
                   ))}
                 </BarChart>
@@ -311,72 +321,64 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-800 bg-slate-900/80 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-300">
-              <TableIcon className="h-3.5 w-3.5 text-emerald-400" />
-              Results Table ({filteredAndSortedRows.length} rows)
+      {/* Data Breakdown Table + CSV Export */}
+      <div className="rounded-2xl border border-[#163661] bg-[#091D38]/90 overflow-hidden shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#163661] bg-[#0A2140] px-6 py-4">
+          <div className="flex items-center gap-2.5">
+            <TableIcon className="h-4 w-4 text-[#00C8FF]" />
+            <span className="text-xs font-bold uppercase tracking-wider text-[#EAF3FF]">
+              Detailed Records ({filteredAndSortedRows.length})
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2.5 py-0.5 text-xs font-mono text-slate-300">
-              <Clock className="h-3 w-3 text-emerald-400" />
-              {execResult.execution_time_ms}ms
-            </span>
-            {execResult.truncated && (
-              <span className="rounded-full border border-amber-500/40 bg-amber-500/15 px-2.5 py-0.5 text-xs text-amber-300">
-                Row limit capped ({execResult.max_rows_enforced} max)
-              </span>
-            )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-500" />
+              <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-[#91A9C5]" />
               <input
                 type="text"
                 value={tableFilter}
                 onChange={(e) => setTableFilter(e.target.value)}
-                placeholder="Filter rows..."
-                className="rounded-lg border border-slate-700 bg-slate-950 pl-8 pr-3 py-1 text-xs text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+                placeholder="Filter records..."
+                className="rounded-xl border border-[#1B3F70] bg-[#06152B] pl-9 pr-3 py-1.5 text-xs text-[#EAF3FF] placeholder-[#91A9C5]/70 focus:border-[#168BFF] focus:outline-none"
               />
             </div>
             <a
               href={apiClient.getExportCsvUrl(currentRun.query_id)}
               download={`querypilot_${currentRun.query_id}.csv`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/25"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#00C8FF]/40 bg-[#168BFF]/20 px-3.5 py-1.5 text-xs font-semibold text-[#EAF3FF] hover:bg-[#168BFF] hover:text-white transition"
             >
-              <Download className="h-3.5 w-3.5" />
-              Export CSV
+              <Download className="h-3.5 w-3.5 text-[#00C8FF]" />
+              Download CSV
             </a>
           </div>
         </div>
 
         {columns.length === 0 || rows.length === 0 ? (
-          <div className="p-6 text-center text-xs text-slate-400">
-            Query executed cleanly and returned 0 matching rows.
+          <div className="p-8 text-center text-xs text-[#91A9C5]">
+            No matching records found for this query.
           </div>
         ) : (
           <div className="max-h-80 overflow-auto">
             <table className="w-full text-left text-xs">
-              <thead className="sticky top-0 bg-slate-950 text-slate-300 border-b border-slate-800">
+              <thead className="sticky top-0 bg-[#06152B] text-[#91A9C5] border-b border-[#163661]">
                 <tr>
                   {columns.map((col) => (
                     <th
                       key={col}
                       onClick={() => handleSort(col)}
-                      className="cursor-pointer whitespace-nowrap px-4 py-2.5 font-semibold hover:text-emerald-400"
+                      className="cursor-pointer whitespace-nowrap px-5 py-3 font-semibold uppercase tracking-wider hover:text-[#00C8FF]"
                     >
-                      {col}
+                      {col.replace(/_/g, " ")}
                       {sortCol === col ? (sortDesc ? " ↓" : " ↑") : ""}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/70">
+              <tbody className="divide-y divide-[#142F54]/70">
                 {filteredAndSortedRows.map((row, rIdx) => (
                   <tr
                     key={rIdx}
-                    className="hover:bg-slate-800/40 transition-colors"
+                    className="hover:bg-[#168BFF]/10 transition-colors"
                   >
                     {columns.map((col) => {
                       const val = row[col];
@@ -384,14 +386,14 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
                       return (
                         <td
                           key={col}
-                          className={`whitespace-nowrap px-4 py-2 ${
+                          className={`whitespace-nowrap px-5 py-2.5 ${
                             isNum
-                              ? "font-mono text-emerald-300"
-                              : "text-slate-200"
+                              ? "font-semibold text-[#00C8FF]"
+                              : "text-[#EAF3FF]"
                           }`}
                         >
                           {val === null || val === undefined
-                            ? "NULL"
+                            ? "—"
                             : isNum
                               ? val.toLocaleString(undefined, {
                                   maximumFractionDigits: 2,

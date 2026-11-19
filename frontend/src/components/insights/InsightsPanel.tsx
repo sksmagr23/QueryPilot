@@ -4,25 +4,21 @@ import {
   ArrowRight,
   Bookmark,
   CheckCircle2,
-  Code2,
-  FileCheck2,
-  HelpCircle,
-  Lightbulb,
+  Compass,
   Scale,
+  Sparkles,
 } from "lucide-react";
 import type { QueryPilotRun } from "../../types/querypilot";
 
 interface InsightsPanelProps {
   currentRun: QueryPilotRun | null;
   onSelectFollowUp: (question: string) => void;
-  onJumpToSql: () => void;
   onToggleBookmark: () => void;
 }
 
 export const InsightsPanel: React.FC<InsightsPanelProps> = ({
   currentRun,
   onSelectFollowUp,
-  onJumpToSql,
   onToggleBookmark,
 }) => {
   if (!currentRun || !currentRun.response) {
@@ -33,129 +29,131 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({
   const statusConfig =
     currentRun.status === "completed"
       ? {
-          label: "Verified Answer",
-          cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+          label: "Verified Insight",
+          cls: "border-[#00C8FF]/30 bg-[#00C8FF]/10 text-[#00C8FF]",
         }
       : currentRun.status === "awaiting_approval"
         ? {
-            label: "Waiting for Approval",
-            cls: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+            label: "Pending Review",
+            cls: "border-amber-400/30 bg-amber-400/10 text-amber-300",
           }
         : currentRun.status === "clarification_needed"
           ? {
-              label: "Needs Clarification",
-              cls: "border-indigo-500/40 bg-indigo-500/10 text-indigo-300",
+              label: "Clarification Needed",
+              cls: "border-[#168BFF]/40 bg-[#168BFF]/15 text-[#EAF3FF]",
             }
           : {
-              label: "Request Declined",
-              cls: "border-rose-500/40 bg-rose-500/10 text-rose-300",
+              label: "Outside Available Scope",
+              cls: "border-rose-400/30 bg-rose-500/10 text-rose-300",
             };
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 shadow-md space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-4">
-        <div className="space-y-1.5 max-w-3xl">
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-0.5 text-xs font-semibold ${statusConfig.cls}`}
-            >
-              {statusConfig.label}
-            </span>
-          </div>
-          <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 pt-1">
-            <Lightbulb className="h-5 w-5 text-emerald-400 shrink-0" />
-            {resp.headline}
-          </h2>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            {resp.summary}
-          </p>
-        </div>
+    <section className="relative overflow-hidden rounded-2xl border border-[#163661] bg-gradient-to-b from-[#0A1F3D]/95 to-[#071830]/95 p-7 shadow-[0_20px_50px_rgba(3,10,24,0.6)]">
+      {/* Subtle Top Ambient Glow */}
+      <div className="pointer-events-none absolute -top-24 left-1/2 h-48 w-96 -translate-x-1/2 rounded-full bg-[#168BFF]/15 blur-3xl" />
 
-        <div className="flex items-center gap-2">
+      <div className="relative space-y-6">
+        {/* Top Row: Status Badge + Headline + Save Button */}
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#163661]/80 pb-6">
+          <div className="space-y-2.5 max-w-3xl">
+            <div className="flex items-center gap-2.5">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-wide uppercase ${statusConfig.cls}`}
+              >
+                <Sparkles className="h-3 w-3" />
+                {statusConfig.label}
+              </span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#EAF3FF]">
+              {resp.headline}
+            </h2>
+            <p className="text-sm sm:text-base text-[#91A9C5] leading-relaxed">
+              {resp.summary}
+            </p>
+          </div>
+
           <button
             type="button"
             onClick={onToggleBookmark}
-            className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-medium transition ${
+            className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-semibold transition ${
               currentRun.bookmarked
-                ? "border-amber-500/50 bg-amber-500/20 text-amber-300"
-                : "border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700"
+                ? "border-[#00C8FF]/50 bg-[#00C8FF]/15 text-[#00C8FF]"
+                : "border-[#1B3F70] bg-[#0D2548] text-[#EAF3FF] hover:border-[#168BFF] hover:bg-[#12305C]"
             }`}
           >
             <Bookmark className="h-3.5 w-3.5" />
             {currentRun.bookmarked ? "Saved Report" : "Save Report"}
           </button>
-          {resp.sql_reference && (
-            <button
-              type="button"
-              onClick={onJumpToSql}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-500/40 bg-indigo-500/15 px-3.5 py-2 text-xs font-medium text-indigo-300 hover:bg-indigo-500/25 transition"
-            >
-              <Code2 className="h-3.5 w-3.5" />
-              View Query
-            </button>
-          )}
         </div>
+
+        {/* Three-Column Insight Cards */}
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="rounded-xl border border-[#163661] bg-[#06152B]/70 p-5">
+            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#00C8FF]">
+              <CheckCircle2 className="h-4 w-4" /> Key Takeaways
+            </div>
+            <ul className="space-y-2.5 text-xs sm:text-sm text-[#EAF3FF]/90 leading-relaxed">
+              {resp.key_findings.map((finding, idx) => (
+                <li key={idx} className="flex items-start gap-2.5">
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-[#00C8FF] shrink-0" />
+                  <span>{finding}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-[#163661] bg-[#06152B]/70 p-5">
+            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#168BFF]">
+              <Scale className="h-4 w-4" /> Calculation Basis
+            </div>
+            <ul className="space-y-2 text-xs sm:text-sm text-[#91A9C5] leading-relaxed">
+              {resp.assumptions.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2.5">
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-[#168BFF] shrink-0" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-[#163661] bg-[#06152B]/70 p-5">
+            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#91A9C5]">
+              <AlertCircle className="h-4 w-4 text-[#00C8FF]" /> Scope & Notes
+            </div>
+            <ul className="space-y-2 text-xs sm:text-sm text-[#91A9C5] leading-relaxed">
+              {resp.limitations.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2.5">
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-[#91A9C5] shrink-0" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Suggested Follow-Up Strip */}
+        {resp.follow_up_suggestions && resp.follow_up_suggestions.length > 0 && (
+          <div className="pt-1">
+            <div className="mb-2.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#91A9C5]">
+              <Compass className="h-3.5 w-3.5 text-[#00C8FF]" />
+              Continue Exploring
+            </div>
+            <div className="flex flex-wrap gap-2.5">
+              {resp.follow_up_suggestions.map((suggestion, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => onSelectFollowUp(suggestion)}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#1B3F70] bg-[#0C2242] px-4 py-1.5 text-xs font-medium text-[#EAF3FF] hover:border-[#00C8FF]/60 hover:bg-[#168BFF]/20 hover:text-white transition"
+                >
+                  <span>{suggestion}</span>
+                  <ArrowRight className="h-3 w-3 text-[#00C8FF]" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-          <div className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-400">
-            <FileCheck2 className="h-4 w-4" /> Key Takeaways
-          </div>
-          <ul className="space-y-2 text-xs text-slate-200 leading-relaxed">
-            {resp.key_findings.map((finding, idx) => (
-              <li key={idx} className="flex items-start gap-2">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                <span>{finding}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-          <div className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-indigo-400">
-            <Scale className="h-4 w-4" /> How This Was Calculated
-          </div>
-          <ul className="space-y-2 text-xs text-slate-300 list-disc pl-4 leading-relaxed">
-            {resp.assumptions.map((item, idx) => (
-              <li key={idx}>{item}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-          <div className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-400">
-            <AlertCircle className="h-4 w-4" /> Things to Keep in Mind
-          </div>
-          <ul className="space-y-2 text-xs text-slate-300 list-disc pl-4 leading-relaxed">
-            {resp.limitations.map((item, idx) => (
-              <li key={idx}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {resp.follow_up_suggestions && resp.follow_up_suggestions.length > 0 && (
-        <div className="pt-1">
-          <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-slate-400">
-            <HelpCircle className="h-3.5 w-3.5 text-indigo-400" />
-            Explore further with a follow-up question:
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {resp.follow_up_suggestions.map((suggestion, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => onSelectFollowUp(suggestion)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800/80 px-3.5 py-1.5 text-xs text-slate-200 hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-300 transition"
-              >
-                <span>{suggestion}</span>
-                <ArrowRight className="h-3 w-3" />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+    </section>
   );
 };
