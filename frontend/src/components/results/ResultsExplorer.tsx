@@ -19,7 +19,10 @@ import {
 } from "recharts";
 import {
   BarChart3,
+  Clock,
+  Database,
   Download,
+  Gauge,
   LineChart as LineChartIcon,
   PieChart as PieChartIcon,
   Search,
@@ -49,6 +52,7 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
   const execResult = currentRun?.execution_result;
   const viz = currentRun?.visualization;
   const analysis = currentRun?.analysis;
+  const costEst = currentRun?.cost_estimate;
 
   const [chartTypeOverride, setChartTypeOverride] = useState<
     "bar" | "line" | "area" | "pie" | "composed" | null
@@ -118,7 +122,41 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Horizontal Statistics Strip */}
+      {/* Database Cost, Execution Time & Row Count Strip */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#163661] bg-[#0A1F3D]/90 px-5 py-3.5 text-xs">
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="inline-flex items-center gap-1.5 font-semibold text-[#EAF3FF]">
+            <Clock className="h-4 w-4 text-[#00C8FF]" />
+            DB Execution Time:{" "}
+            <strong className="text-[#00C8FF]">
+              {execResult.execution_time_ms} ms
+            </strong>
+          </span>
+          {costEst && (
+            <span className="inline-flex items-center gap-1.5 font-semibold text-[#EAF3FF]">
+              <Gauge className="h-4 w-4 text-[#168BFF]" />
+              Database Cost:{" "}
+              <strong className="text-[#00C8FF]">
+                {costEst.estimated_cost}
+              </strong>{" "}
+              <span className="text-[#91A9C5] capitalize">
+                ({costEst.risk_level} impact • ~
+                {costEst.estimated_rows.toLocaleString()} est. rows)
+              </span>
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1.5 font-semibold text-[#EAF3FF]">
+            <Database className="h-4 w-4 text-[#00C8FF]" />
+            Records Returned:{" "}
+            <strong className="text-[#00C8FF]">{rows.length}</strong>
+          </span>
+        </div>
+        <div className="text-[#91A9C5]">
+          Total Analysis Time: {(currentRun.total_latency_ms / 1000).toFixed(2)}s
+        </div>
+      </div>
+
+      {/* Horizontal KPI Statistics Cards */}
       {analysis?.kpis && analysis.kpis.length > 0 && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {analysis.kpis.map((kpi, idx) => (
@@ -321,13 +359,13 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
         </div>
       )}
 
-      {/* Data Breakdown Table + CSV Export */}
+      {/* Output Data Table + CSV Export */}
       <div className="rounded-2xl border border-[#163661] bg-[#091D38]/90 overflow-hidden shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#163661] bg-[#0A2140] px-6 py-4">
           <div className="flex items-center gap-2.5">
             <TableIcon className="h-4 w-4 text-[#00C8FF]" />
             <span className="text-xs font-bold uppercase tracking-wider text-[#EAF3FF]">
-              Detailed Records ({filteredAndSortedRows.length})
+              Output Data Records ({filteredAndSortedRows.length})
             </span>
           </div>
 
@@ -355,7 +393,7 @@ export const ResultsExplorer: React.FC<ResultsExplorerProps> = ({
 
         {columns.length === 0 || rows.length === 0 ? (
           <div className="p-8 text-center text-xs text-[#91A9C5]">
-            No matching records found for this query.
+            No matching records returned for this query.
           </div>
         ) : (
           <div className="max-h-80 overflow-auto">

@@ -1,15 +1,15 @@
 # QueryPilot
 
-QueryPilot is an AI analytics application that converts natural-language business questions into validated SQL, runs queries on a read-only PostgreSQL database, and returns charts and data-backed summaries.
+QueryPilot is an Agentic analytics platform that translates natural-language business questions into validated SQL queries, estimates database execution cost, runs queries safely on a read-only connection, and delivers interactive charts, queries, and data-backed insights.
 
 ---
 
 ## Core Tech Stack
 
-- **Frontend:** React, TypeScript, Vite, Tailwind CSS, Recharts, Lucide Icons
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS, Recharts
 - **Backend:** Python, FastAPI, LangGraph, Pydantic, SQLAlchemy
 - **AI & Safety:** Google Gemini (`google-genai`), SQLGlot (AST SQL validation)
-- **Database:** PostgreSQL 16 (Docker)
+- **Database:** PostgreSQL (Docker)
 
 ---
 
@@ -98,3 +98,31 @@ Open `http://localhost:5173` in your browser.
 ```bash
 pytest.exe backend/tests -v
 ```
+
+---
+
+## Project Structure
+
+```text
+Querypilot/
+├── backend/
+│   ├── run.py              # server launcher
+│   ├── app/
+│   │   ├── api/            # FastAPI endpoints
+│   │   ├── db/             # SQLAlchemy models, read-only engine, deterministic seed, persistence
+│   │   ├── graph/          # 12-node LangGraph workflow, state, and conditional routing
+│   │   ├── llm/            # Google Gemini provider configured
+│   │   ├── safety/         # SQLGlot AST validator & PostgreSQL EXPLAIN cost estimator
+│   │   ├── semantic/       # Live schema inspector & semantic metric catalog
+│   │   └── services/       # Python statistical analyzer & chart builder
+│   ├── eval/               # 105-question benchmark suite & baseline comparator
+│   └── tests/              # 43 pytest suites
+├── frontend/
+│   └── src/components/     
+└── docs/
+    ├── ARCHITECTURE.md     # LangGraph workflow & system architecture
+    ├── API.md              # API reference
+    └── EVALUATION_REPORT.md# 105-question benchmark report
+```
+
+---

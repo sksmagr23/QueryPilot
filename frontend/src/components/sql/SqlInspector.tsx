@@ -2,13 +2,16 @@ import React, { useEffect, useState } from "react";
 import Editor from "@monaco-editor/react";
 import {
   AlertTriangle,
-  ArrowRight,
+  Check,
   CheckCircle2,
+  Clock,
+  Code2,
+  Copy,
+  Database,
   Gauge,
   Play,
   ShieldAlert,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import { apiClient } from "../../api/client";
 import type {
@@ -20,13 +23,13 @@ import type {
 interface SqlInspectorProps {
   currentRun: QueryPilotRun | null;
   onRunUpdated: (updated: QueryPilotRun) => void;
-  onOpenApprovals?: () => void;
+  onOpenApprovalsDropdown?: () => void;
 }
 
 export const SqlInspector: React.FC<SqlInspectorProps> = ({
   currentRun,
   onRunUpdated,
-  onOpenApprovals,
+  onOpenApprovalsDropdown,
 }) => {
   const [sqlText, setSqlText] = useState<string>(
     currentRun?.generated_sql || ""
@@ -41,32 +44,28 @@ export const SqlInspector: React.FC<SqlInspectorProps> = ({
     "validate" | "cost" | "execute" | null
   >(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
-  const [sqlModified, setSqlModified] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
 
   useEffect(() => {
     if (currentRun) {
       setSqlText(currentRun.generated_sql || "");
       setValidation(currentRun.validation_result || null);
       setCostEstimate(currentRun.cost_estimate || null);
-      setSqlModified(false);
       setErrorBanner(null);
     }
   }, [currentRun?.query_id, currentRun?.generated_sql]);
 
-  if (!currentRun) {
+  if (!currentRun || !currentRun.generated_sql) {
     return null;
   }
 
-  const handleEditorChange = (val: string | undefined) => {
-    const next = val ?? "";
-    setSqlText(next);
-    if (
-      currentRun?.generated_sql &&
-      next.trim() !== currentRun.generated_sql.trim()
-    ) {
-      setSqlModified(true);
-    } else {
-      setSqlModified(false);
+  const handleCopySql = async () => {
+    try {
+      await navigator.clipboard.writeText(sqlText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // ignore clipboard errors
     }
   };
 
@@ -97,7 +96,7 @@ export const SqlInspector: React.FC<SqlInspectorProps> = ({
       setCostEstimate(res.cost_estimate);
     } catch (err) {
       setErrorBanner(
-        err instanceof Error ? err.message : "Impact check failed"
+        err instanceof Error ? err.message : "Database cost check failed"
       );
     } finally {
       setBusyAction(null);
@@ -112,12 +111,11 @@ export const SqlInspector: React.FC<SqlInspectorProps> = ({
       const updated = await apiClient.executeSql({
         sql: sqlText,
         query_id: currentRun?.query_id,
-        question: currentRun?.question || "Custom Query Execution",
+        question: currentRun?.question || "Custom SQL Query",
         thread_id: currentRun?.thread_id,
       });
       setValidation(updated.validation_result || null);
       setCostEstimate(updated.cost_estimate || null);
-      setSqlModified(false);
       onRunUpdated(updated);
     } catch (err) {
       setErrorBanner(err instanceof Error ? err.message : "Execution failed");
@@ -126,95 +124,114 @@ export const SqlInspector: React.FC<SqlInspectorProps> = ({
     }
   };
 
-  const riskBadgeColor =
-    costEstimate?.risk_level === "high"
-      ? "bg-rose-500/15 text-rose-300 border-rose-500/40"
-      : costEstimate?.risk_level === "medium"
-        ? "bg-amber-500/15 text-amber-300 border-amber-500/40"
-        : "bg-emerald-500/15 text-emerald-300 border-emerald-500/40";
+  const execTimeMs = currentRun.execution_result?.execution_time_ms;
 
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden shadow-sm">
+    <div className="flex flex-col rounded-2xl border border-[#163661] bg-[#091D38]/90 overflow-hidden shadow-lg">
       {/* Header Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-5 py-3.5">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-            SQL Query Editor
-          </span>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#163661] bg-[#0A2140] px-6 py-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Code2 className="h-4 w-4 text-[#00C8FF]" />
+            <span className="text-xs font-bold uppercase tracking-wider text-[#EAF3FF]">
+              SQL Query & Database Cost
+            </span>
+          </div>
+
           {validation && (
             <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-0.5 text-xs font-semibold ${
                 validation.is_valid
-                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                  ? "border-[#00C8FF]/40 bg-[#00C8FF]/10 text-[#00C8FF]"
                   : "border-rose-500/40 bg-rose-500/15 text-rose-300"
               }`}
             >
               {validation.is_valid ? (
                 <>
-                  <ShieldCheck className="h-3.5 w-3.5" /> Safe & Verified
+                  <ShieldCheck className="h-3.5 w-3.5" /> Verified Safe
                 </>
               ) : (
                 <>
                   <ShieldAlert className="h-3.5 w-3.5" />{" "}
-                  {validation.is_safe ? "Needs Correction" : "Blocked for Safety"}
+                  {validation.is_safe ? "Query Issue" : "Blocked for Safety"}
                 </>
               )}
             </span>
           )}
+
           {costEstimate && (
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${riskBadgeColor}`}
-            >
-              <Gauge className="h-3.5 w-3.5" />
-              Impact: {costEstimate.risk_level}
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#1B3F70] bg-[#06152B] px-3 py-0.5 text-xs font-semibold text-[#EAF3FF]">
+              <Gauge className="h-3.5 w-3.5 text-[#00C8FF]" />
+              DB Cost: {costEstimate.estimated_cost} (
+              <span className="capitalize text-[#00C8FF]">
+                {costEstimate.risk_level}
+              </span>
+              )
             </span>
           )}
-          {sqlModified && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/15 px-2.5 py-0.5 text-xs text-amber-300">
-              <AlertTriangle className="h-3.5 w-3.5" /> Unsaved Edits
+
+          {execTimeMs !== undefined && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#1B3F70] bg-[#06152B] px-3 py-0.5 text-xs font-semibold text-[#EAF3FF]">
+              <Clock className="h-3.5 w-3.5 text-[#00C8FF]" />
+              DB Time: {execTimeMs} ms
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCopySql}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#1B3F70] bg-[#06152B] px-3 py-1.5 text-xs font-semibold text-[#91A9C5] hover:border-[#168BFF] hover:text-[#EAF3FF] transition"
+          >
+            {copied ? (
+              <>
+                <Check className="h-3.5 w-3.5 text-[#00C8FF]" /> Copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" /> Copy SQL
+              </>
+            )}
+          </button>
           <button
             type="button"
             onClick={handleValidate}
             disabled={busyAction !== null}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700 disabled:opacity-50 transition"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#1B3F70] bg-[#0D2548] px-3 py-1.5 text-xs font-semibold text-[#EAF3FF] hover:border-[#168BFF] disabled:opacity-50 transition"
           >
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-[#00C8FF]" />
             {busyAction === "validate" ? "Checking..." : "Check Safety"}
           </button>
           <button
             type="button"
             onClick={handleEstimateCost}
             disabled={busyAction !== null}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700 disabled:opacity-50 transition"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#1B3F70] bg-[#0D2548] px-3 py-1.5 text-xs font-semibold text-[#EAF3FF] hover:border-[#168BFF] disabled:opacity-50 transition"
           >
-            <Gauge className="h-3.5 w-3.5 text-indigo-400" />
-            {busyAction === "cost" ? "Checking..." : "Estimate Impact"}
+            <Gauge className="h-3.5 w-3.5 text-[#00C8FF]" />
+            {busyAction === "cost" ? "Checking..." : "Check Cost"}
           </button>
           <button
             type="button"
             onClick={handleExecute}
             disabled={busyAction !== null}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-emerald-500 disabled:opacity-50 transition"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#168BFF] px-4 py-1.5 text-xs font-bold text-white shadow-sm shadow-[#168BFF]/30 hover:bg-[#168BFF]/90 disabled:opacity-50 transition"
           >
             <Play className="h-3.5 w-3.5" />
-            {busyAction === "execute" ? "Running..." : "Run Query"}
+            {busyAction === "execute" ? "Running..." : "Run SQL"}
           </button>
         </div>
       </div>
 
-      {/* Monaco SQL Editor */}
-      <div className="h-52 w-full border-b border-slate-800">
+      {/* SQL Code Editor */}
+      <div className="h-48 w-full border-b border-[#163661]">
         <Editor
           height="100%"
           defaultLanguage="sql"
           theme="vs-dark"
           value={sqlText}
-          onChange={handleEditorChange}
+          onChange={(val) => setSqlText(val ?? "")}
           options={{
             minimap: { enabled: false },
             fontSize: 13,
@@ -227,30 +244,30 @@ export const SqlInspector: React.FC<SqlInspectorProps> = ({
         />
       </div>
 
-      {/* Diagnostics & Metadata Footer */}
-      <div className="space-y-2.5 bg-slate-950/60 px-5 py-3.5 text-xs">
+      {/* Database Cost & Table Metadata Footer */}
+      <div className="space-y-2.5 bg-[#06152B]/80 px-6 py-3.5 text-xs">
         {errorBanner && (
           <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3.5 py-2.5 text-rose-300">
             {errorBanner}
           </div>
         )}
 
-        {costEstimate?.requires_approval && onOpenApprovals && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-950/30 px-4 py-2.5 text-amber-200">
+        {costEstimate?.requires_approval && onOpenApprovalsDropdown && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#00C8FF]/40 bg-[#0A2246] px-4 py-2.5 text-[#EAF3FF]">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+              <AlertTriangle className="h-4 w-4 text-[#00C8FF] shrink-0" />
               <span>
-                This query scans a large volume of data and requires approval
-                before running.
+                <strong>Approval Needed:</strong>{" "}
+                {costEstimate.approval_reason ||
+                  "This query has a high estimated database cost and requires approval."}
               </span>
             </div>
             <button
               type="button"
-              onClick={onOpenApprovals}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1 font-semibold text-slate-950 hover:bg-amber-400 transition"
+              onClick={onOpenApprovalsDropdown}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#00C8FF] px-3 py-1 font-bold text-[#06152B] hover:bg-[#00C8FF]/90 transition"
             >
-              <span>Go to Pending Approvals</span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              Review & Approve
             </button>
           </div>
         )}
@@ -258,7 +275,7 @@ export const SqlInspector: React.FC<SqlInspectorProps> = ({
         {validation && validation.errors.length > 0 && (
           <div className="rounded-xl border border-rose-500/40 bg-rose-950/40 p-3.5 text-rose-200">
             <div className="mb-1 flex items-center gap-1.5 font-semibold text-rose-300">
-              <ShieldAlert className="h-4 w-4" /> Safety & Query Check Issues:
+              <ShieldAlert className="h-4 w-4" /> Query Check Issues:
             </div>
             <ul className="list-disc space-y-1 pl-5">
               {validation.errors.map((err, i) => (
@@ -268,27 +285,33 @@ export const SqlInspector: React.FC<SqlInspectorProps> = ({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-2 text-slate-400">
-          <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-[#91A9C5]">
+          <div className="flex flex-wrap items-center gap-5">
             {validation?.referenced_tables &&
               validation.referenced_tables.length > 0 && (
-                <span>
-                  <strong className="text-slate-300">Data Tables Used:</strong>{" "}
+                <span className="inline-flex items-center gap-1.5">
+                  <Database className="h-3.5 w-3.5 text-[#00C8FF]" />
+                  <strong className="text-[#EAF3FF]">Tables:</strong>{" "}
                   {validation.referenced_tables.join(", ")}
                 </span>
               )}
             {costEstimate && (
               <span>
-                <strong className="text-slate-300">Estimated Rows Scanned:</strong>{" "}
+                <strong className="text-[#EAF3FF]">Estimated Cost:</strong>{" "}
+                {costEstimate.estimated_cost} •{" "}
+                <strong className="text-[#EAF3FF]">Est. Rows Scanned:</strong>{" "}
                 {costEstimate.estimated_rows.toLocaleString()}
               </span>
             )}
+            {execTimeMs !== undefined && (
+              <span>
+                <strong className="text-[#EAF3FF]">Database Execution:</strong>{" "}
+                {execTimeMs} ms
+              </span>
+            )}
           </div>
-          {currentRun?.sql_rationale && (
-            <div className="flex items-center gap-1.5 text-slate-400">
-              <Sparkles className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-              <span>{currentRun.sql_rationale}</span>
-            </div>
+          {currentRun.sql_rationale && (
+            <span className="text-[#91A9C5]">{currentRun.sql_rationale}</span>
           )}
         </div>
       </div>
